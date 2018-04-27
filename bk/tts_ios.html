@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+        div {
+            margin: 0px;
+            padding: 0px;
+        }
+        #status {
+            width: 300px;
+            height: 25px;
+            margin: 10px;
+            text-align: center;
+            border: 3px solid #ddd
+        }
+        input[type=text] {
+            width: 200px;
+            height: 20px;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .lblTitle {
+            display: inline-block;
+            width: 100px;
+            height: 20px;
+            font-size: 14px;
+            margin-bottom: 5px;
+            padding-right: 7px;
+            text-align: right;
+        }
+        input[type=button] {
+            width: 100px;
+            height: 30px;
+            margin-top: 5px;
+            padding: 0px;
+            font-size: 14px;
+        }
+        </style>
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="js/sora.js"></script>
+        <script type="text/javascript" src="js2/tts_test.js?v=1"></script>
+        <script type="text/javascript">
+
+            let _channelId = null;
+            let _metadata = null;
+            let _subscriber = null;
+            let _player = null;
+
+            /**
+             * 初期化処理
+             */
+            $(function() {
+                setupEventListener();
+                controlItems('init');
+                _player = document.getElementById('audioPlayer');
+                $('#txtChannelId').val('tcdt');
+            })
+
+            /**
+             * イベントリスナーのセットアップ
+             */
+            let setupEventListener = function() {
+                $('#btnConnect').on('click', doConnect);
+                $('#btnDisconnect').on('click', doDisconnect);
+            }
+
+            /**
+             * 接続ボタンイベントハンドラ
+             */
+            let doConnect = function() {
+
+                _channelId = $('#txtChannelId').val();
+                _metadata = $('#txtMetadata').val();
+                if (validate() === false) {
+                    return;
+                }
+
+                controlItems('doConnect');
+                connectSoraAsSubscriber();
+            }
+
+            /**
+             * 切断ボタンイベントハンドラ
+             */
+            let doDisconnect = function() {
+                controlItems('doDisconnect');
+                if (_subscriber) {
+                    _subscriber.disconnect();
+                }
+            }
+
+            /**
+             * 入力チェック
+             */
+            let validate = function() {
+                if (!_channelId) {
+                    alert('チャネルIdを入力して下さい。');
+                    return false;
+                }
+                return true;
+            }
+
+            /**
+             * Soraに購読者として接続する。
+             */
+            let connectSoraAsSubscriber = function() {
+                _subscriber = getSoraSubscriber(_channelId, _metadata);
+                _subscriber.connect()
+                    .then(onSuccess)
+                    .catch(onError);
+            }
+
+            /**
+             * 接続成功時処理。
+             */
+            let onSuccess = stream => {
+                console.log(stream);
+                _player.srcObject = stream;
+            };
+
+            /**
+             * 接続失敗時処理。
+             */
+            let onError = error => {
+                console.log(error);
+                alert(error);
+            };
+
+            let controlItems = function(target) {
+                if (!target) {
+                    return;
+                }
+                let disabled = [];
+                let attrs = [];
+                if (target === 'init') {
+                    disabled = [false, true];
+                    attrs = ['未接続', 'blue'];
+                } else if (target === 'doConnect') {
+                    disabled = [true, false];
+                    attrs = ['接続中。。', 'red'];
+                } else if (target === 'doDisconnect') {
+                    disabled = [false, true];
+                    attrs = ['未接続', 'blue'];
+                } else {
+                    return;
+                }
+                $('#btnConnect').prop('disabled', disabled[0]);
+                $('#btnDisconnect').prop('disabled', disabled[1]);
+                $('#status').text(attrs[0]).css('color', attrs[1]);
+            }
+
+        </script>
+    </head>
+    <body>
+        <div id="status"></div>
+        <div>
+            <div class="lblTitle">チャネルId</div>
+            <input id="txtChannelId" type="text"><br/>
+            <div class="lblTitle">メタデータ</div>
+            <input id="txtMetadata" type="text"/><br/>
+            <div class="lblTitle"></div>
+            <input id="btnConnect" type="button" value="接続" />
+            <input id="btnDisconnect" type="button" value="切断" />
+        </div>
+        <br/>
+        <audio id="audioPlayer" controls/>
+    </body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <script type="text/javascript">
+
+            window.onload = function() {
+                init();
+            };
+
+            function init() {
+                navigator.mediaDevices.getUserMedia({ audio : true })
+                    .then(onSuccess)
+                    .catch(onError);
+            }
+
+            var onSuccess = stream => {
+
+                var ctx = getContext();
+                // var osc = ctx.createOscillator();
+                // osc.frequency.value = 800 * Math.pow(2, 2 / 12);
+
+                var ttsInput = ctx.createMediaStreamSource(stream);
+                var mixerOutput = ctx.createMediaStreamDestination();
+                var scrptProcessor = ctx.createScriptProcessor();
+                setupAudioProcessEventHandler(scrptProcessor);
+                // scrptProcessor.connect(ctx.destination);
+
+                // ttsInput.connect(scrptProcessor);
+
+
+                // var minGain = ctx.createGain();
+                // var maxGain = ctx.createGain();
+
+                // var peer = getRTCPeerConnection();
+                // peer.addStream(mixerOutput.stream);
+            }
+
+            var onError = error => {
+                console.log('ERROR : ' + error);
+                alert('ERROR raised. : ' + error);
+            }
+
+            function setupAudioProcessEventHandler(processor) {
+                var bufSize = 4096;
+                var wholeBuffer= [];
+                processor.onaudioprocess = function(event) {
+                    var channel = event.inputBuffer.getChannelData(0);
+                    var buffer = new Float32Array(bufSize);
+                    for (var i = 0; i < bufSize; i++) {
+                        buffer[i] = channel[i];
+                    }
+                    wholeBuffer.push(buffer);
+                    console.log(wholeBuffer.length);
+                    console.log(wholeBuffer);
+                };
+            }
+
+            function getContext() {
+                var context = window.AudioContext || window.webkitAudioContext;
+                return new context();
+            };
+
+            function getRTCPeerConnection() {
+                var PC =
+                    window.RTCPeerConnection
+                    || window.webkitRTCPeerConnection
+                    || window.mozRTCPeerConnection;
+                return new PC();
+            }
+        </script>
+    </head>
+    <body>
+        <audio id="remote-video" autoplay="" controls></audio>
+    </body>
+</html>

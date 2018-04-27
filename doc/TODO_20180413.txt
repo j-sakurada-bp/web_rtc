@@ -1,0 +1,5 @@
+1.tcd_listen_m
+channelidの取得
+
+2.保留音の取得
+IF情報-

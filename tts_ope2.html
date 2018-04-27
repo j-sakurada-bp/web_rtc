@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" type="text/css" href="css/tts_ope.css">
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="js/sora.js"></script>
+        <script type="text/javascript" src="js2/common2.js?v=1"></script>
+        <script type="text/javascript" src="js2/tts_ope2.js?v=1"></script>
+    </head>
+    <body>
+        <div class="lblDeviceType">オペレータ側</div>
+        <h3 style="color: red; font-weight: bold;">音声が終了すると内部でポーリング処理を開始します。リソースを消費しますので切断して下さい。</h3>
+        <div id="mainArea">
+            <div id="leftArea">
+                <div id="status"></div>
+                <div id="playInfo"></div>
+                <input id="btnDisconnect" type="button" value="切断" />
+            <input id="btnPending" type="button" value="保留" />
+            </div>
+            <div id="rightArea">
+                <div class="lblAudio">「iPhone => オペレータ」ストリーム</div><div id="containerDown" class="container"></div>
+            </div>
+        </div>
+        <hr/>
+        <div>
+            <h3>保留音設定</h3>
+            <div id="waitSound"></div>
+            <select id="selectWaitSound">
+                <option value="">ー</option>
+                <option value="1">保留音１</option>
+                <option value="2">保留音２</option>
+                <option value="3">保留音３</option>
+                <option value="4">保留音４</option>
+                <option value="5">保留音５</option>
+                <option value="6">保留音６</option>
+            </select>
+            <input id="btnWaitSound" type="button" value="保留音選択" />
+        </div>
+    </body>
+</html>

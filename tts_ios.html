@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+        .lblDeviceType {
+            margin: 10px;
+            padding-left: 10px;
+            padding-bottom: 5px;
+            font-size: 20px;
+            border-left: 10px solid pink;
+            border-bottom: 3px solid pink;
+        }
+        div {
+            margin: 0px;
+            padding: 0px;
+        }
+        #status {
+            width: 300px;
+            height: 25px;
+            margin: 10px;
+            text-align: center;
+            border: 3px solid #ddd
+        }
+        input[type=text] {
+            width: 200px;
+            height: 20px;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .lblTitle {
+            display: inline-block;
+            width: 100px;
+            height: 20px;
+            font-size: 14px;
+            margin-bottom: 5px;
+            padding-right: 7px;
+            text-align: right;
+        }
+        input[type=button] {
+            width: 100px;
+            height: 30px;
+            margin-top: 5px;
+            padding: 0px;
+            font-size: 14px;
+        }
+        #mainArea {
+            height: 300px;
+        }
+        #leftArea {
+            float: left;
+        }
+        #rightArea {
+            border: 1px solid #fcc;
+            padding: 10px;
+            float: left;
+            margin-top: 10px;
+            margin-left: 30px;
+        }
+        .lblAudio {
+            background-color: #ccc;
+            margin-bottom: 5px;
+        }
+        .spacer {
+            height: 1opx;
+        }
+        .container {
+            display: inline-block;
+        }
+        h2 {
+            margin-top: 20px;
+        }
+        p {
+            margin-left: 20px;
+        }
+        </style>
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="js/sora.js"></script>
+        <script type="text/javascript" src="js2/common2.js?v=1"></script>
+        <script type="text/javascript" src="js2/tts_ios.js?v=1"></script>
+    </head>
+    <body>
+        <div class="lblDeviceType">iPhone側</div>
+        <div id="mainArea">
+            <div id="leftArea">
+                <div id="status"></div>
+                <div>
+                    <div class="lblTitle">チャネルId</div>
+                    <input id="txtChannelId" type="text"><br/>
+                    <div class="lblTitle">メタデータ</div>
+                    <input id="txtMetadata" type="text"/><br/>
+                    <div class="lblTitle"></div>
+                    <input id="btnConnect" type="button" value="接続" />
+                    <input id="btnDisconnect" type="button" value="切断" />
+                </div>
+            </div>
+            <div id="rightArea">
+                <div class="lblAudio">「iPhone => オペレータ」ストリーム</div><div id="containerUp" class="container"></div><br/>
+                <div class="spacer">&nbsp;</div>
+                <div class="lblAudio">「オペレータ(TTS) => iPhone」ストリーム</div><div id="containerDown" class="container"></div>
+            </div>
+        </div>
+    </body>
+</html>

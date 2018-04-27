@@ -1,0 +1,87 @@
+#mainArea {
+    height: 200px;
+}
+#leftArea {
+    float: left;
+}
+#rightArea {
+    border: 1px solid #fcc;
+    padding: 10px;
+    float: left;
+    margin-top: 10px;
+    margin-left: 30px;
+}
+.lblDeviceType {
+    margin: 10px;
+    padding-left: 10px;
+    padding-bottom: 5px;
+    font-size: 20px;
+    border-left: 10px solid lightgreen;
+    border-bottom: 3px solid lightgreen;
+}
+div {
+    margin: 0px;
+    padding: 0px;
+}
+#status {
+    width: 300px;
+    height: 25px;
+    margin: 10px;
+    text-align: center;
+    border: 3px solid #ddd
+}
+#playInfo {
+    width: 300px;
+    height: 25px;
+    margin: 10px;
+    text-align: center;
+    border: 3px solid #faa;
+}
+#waitSound {
+    width: 300px;
+    height: 25px;
+    margin: 10px;
+    text-align: center;
+    border: 3px solid #aaf;
+}
+input[type=text] {
+    width: 200px;
+    height: 20px;
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+.lblTitle {
+    display: inline-block;
+    width: 100px;
+    height: 20px;
+    font-size: 14px;
+    margin-bottom: 5px;
+    padding-right: 7px;
+    text-align: right;
+}
+input[type=button] {
+    width: 100px;
+    height: 30px;
+    margin-top: 5px;
+    padding: 0px;
+    font-size: 14px;
+}
+select {
+    width: 150px;
+    height: 40px;
+    font-size: 14px;
+}
+option {
+    font-size: 14px;
+}
+.lblAudio {
+    background-color: #ccc;
+    margin-bottom: 5px;
+}
+p {
+    margin-left: 20px;
+}
+hr {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}

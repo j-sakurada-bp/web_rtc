@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+        .lblDeviceType {
+            margin: 10px;
+            padding-left: 10px;
+            padding-bottom: 5px;
+            font-size: 20px;
+            border-left: 10px solid lightgreen;
+            border-bottom: 3px solid lightgreen;
+        }
+        div {
+            margin: 0px;
+            padding: 0px;
+        }
+        #status {
+            width: 300px;
+            height: 25px;
+            margin: 10px;
+            text-align: center;
+            border: 3px solid #ddd
+        }
+        #playInfo {
+            width: 300px;
+            height: 25px;
+            margin: 10px;
+            text-align: center;
+            border: 3px solid #faa;
+        }
+        #waitSount {
+            width: 300px;
+            height: 25px;
+            margin: 10px;
+            text-align: center;
+            border: 3px solid #aaf;
+        }
+        input[type=text] {
+            width: 200px;
+            height: 20px;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .lblTitle {
+            display: inline-block;
+            width: 100px;
+            height: 20px;
+            font-size: 14px;
+            margin-bottom: 5px;
+            padding-right: 7px;
+            text-align: right;
+        }
+        input[type=button] {
+            width: 100px;
+            height: 30px;
+            margin-top: 5px;
+            padding: 0px;
+            font-size: 14px;
+        }
+        select {
+            width: 150px;
+            height: 40px;
+            font-size: 14px;
+        }
+        option {
+            font-size: 14px;
+        }
+        #mainArea {
+            height: 250px;
+        }
+        #leftArea {
+            float: left;
+        }
+        #rightArea {
+            border: 1px solid #fcc;
+            padding: 10px;
+            float: left;
+            margin-top: 10px;
+            margin-left: 30px;
+        }
+        .lblAudio {
+            background-color: #ccc;
+            margin-bottom: 5px;
+        }
+        p {
+            margin-left: 20px;
+        }
+        hr {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        </style>
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="js/sora.js"></script>
+        <script type="text/javascript" src="js2/common1.js?v=1"></script>
+        <script type="text/javascript" src="js2/tts_ope1.js?v=1"></script>
+        <script type="text/javascript">
+            $(function() {
+            })
+        </script>
+    </head>
+    <body>
+        <div class="lblDeviceType">オペレータ側</div>
+        <h3 style="color: red; font-weight: bold;">音声が終了すると内部でポーリング処理を開始します。リソースを消費しますので切断して下さい。</h3>
+        <div id="mainArea">
+            <div id="leftArea">
+                <div id="status"></div>
+                <div class="lblTitle">チャネルId</div>
+                <input id="txtChannelId" type="text"><br/>
+                <div class="lblTitle">メタデータ</div>
+                <input id="txtMetadata" type="text"/><br/>
+                <div class="lblTitle">音源ファイル名</div>
+                ./resources/audio/<input id="txtAudioFileName" type="text"><br/>
+                &nbsp;h1.mp3&nbsp;〜&nbsp;h5.mp3 = 「花咲爺さん」、<br/>
+                &nbsp;ani.mp3 = 「アニメ風」、ad.mp3 = 「広告風」、nar.mp3 = 「ナレーション風」<br/>
+                <!-- <input id="btnConnect" type="button" value="接続" /> -->
+                <input id="btnDisconnect" type="button" value="切断" />
+            </div>
+            <div id="rightArea">
+                <div class="lblAudio">「iPhone => オペレータ」ストリーム</div><div id="containerDown" class="container"></div>
+            </div>
+        </div>
+        <hr/>
+        <div>
+            <h3>保留音設定</h3>
+            <div id="waitSount"></div>
+            <select id="selectWaitSound">
+                <option value="">ー</option>
+                <option value="1">保留音１</option>
+                <option value="2">保留音２</option>
+                <option value="3">保留音３</option>
+            </select>
+            <input id="btnWaitSound" type="button" value="保留音選択" />
+        </div>
+        <hr/>
+        <div>
+            <div id="playInfo"></div>
+            <div class="lblTitle">次の音源を設定</div>
+            ./resources/audio/<input id="txtNextSourceName" type="text"><br/>
+            <input id="btnSetNext" type="button" value="設定" />
+            <input id="btnPending" type="button" value="保留" />
+            <h3>次に再生する音源リスト</h3>
+            <ol id="playList">
+            </ol>
+        </div>
+    </body>
+</html>

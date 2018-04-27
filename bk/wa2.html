@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+        .showStatus {
+            width: 300px;
+            height: 50px;
+            margin: 5px;
+            font-size: 20px;
+            font-style: italic;
+            font-weight: bold;
+            text-align: center;
+        }
+        input[type=button] {
+            width: 150px;
+            margin: 5px;
+            height: 30px;
+            font-size: 16px;
+        }
+        </style>
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="js/sora.js"></script>
+        <script type="text/javascript" src="js2/wa.js"></script>
+
+        <script type="text/javascript">
+
+            const _bufSize = 4096;
+            const _wholeBuffer= [];
+            let _ctx = null;
+            let _processor = null;
+            let _ttsInput = null;
+            let _params = {};
+
+            let _publisher = null;
+
+            /**
+             * 初期化処理
+             */
+            $(function() {
+
+                _params = getGETParameters();
+
+                // iOSクライアントとの間に下り専用のWebRTCコネクションを設立する
+                // _publisher = getSoraPublisher(_params.cid, _params.md);
+
+                // console.log(publisher);
+                // setupEventHander();
+                // initProcessor();
+            });
+
+            /**
+             * イベントリスナの設定
+             */
+            function setupEventHander() {
+                $('#btnStart').on('click', startRecord);
+                $('#btnStop').on('click', stopRecord);
+                $('#btnClear').on('click', clearBuffer);
+                $('#btnConnIOS').on('click', connectionToClient);
+                $('#btnConnServer').on('click', connectToTTSServer);
+            }
+
+            function connectToClient() {
+                console.log('CONNECT TO CLIENT.')
+            }
+
+            function connectToTTSServer() {
+                console.log('CONNECT TO TTS SERVER.')
+            }
+
+            /**
+             * 記録の開始
+             */
+            function startRecord(event) {
+                _wholeBuffer = [];
+                $('#showStatus').text('記録中...').css('color', 'red');
+                setupAudioProcessEventHandler(_processor);
+                // _processor.connect(_ctx.destination);
+            }
+
+            /**
+             * 記録の一時停止
+             */
+            function stopRecord(event) {
+                $('#showStatus').text('終了。').css('color', 'black');
+                releaseAudioProcessEventHandler(_processor);
+                _ttsInput.disconnect();
+                console.log(_wholeBuffer.length);
+                console.log(_wholeBuffer);
+            }
+
+            /**
+             *
+             */
+            function clearBuffer(event) {
+                $('#showStatus').html('&nbsp;');
+                _wholeBuffer = [];
+            }
+            /**
+             * 記録の終了
+             */
+            function endRecord(event) {
+                releaseAudioProcessEventHandler(_processor);
+                _ttsInput.disconnect();
+                console.log(_wholeBuffer.length);
+                console.log(_wholeBuffer);
+            }
+
+            /**
+             * プロセッサを初期化する。
+             */
+            function initProcessor() {
+                navigator.mediaDevices.getUserMedia({ audio : true })
+                    .then(onSuccess2)
+                    .catch(onError);
+            }
+
+            let onSuccess2 = stream => {
+
+                _ctx = getContext();
+
+                src = _ctx.createMediaStreamSource(stream);
+                dest = getSoraPublisher(_params.cid, _params.md);
+                dest.connect(src);
+
+                dest.disconnect();
+            };
+
+            /**
+             * 音声メディアストリーム出力を記録プロセッサの入力に設定する。
+             * 音声メディアの使用許可がされた時に実行されるコールバック関数。
+             */
+            let onSuccess = stream => {
+
+                _ctx = getContext();
+
+                _ttsInput = _ctx.createMediaStreamSource(stream);
+                let mixerOutput = _ctx.createMediaStreamDestination();
+                _processor = _ctx.createScriptProcessor();
+                _ttsInput.connect(_processor);
+
+                let recorder = getMediaRecorder(stream);
+                recorder.start(1000);
+
+                // setupAudioProcessEventHandler(_processor);
+                // _processor.connect(_ctx.destination);
+            };
+
+            /**
+             * エラーハンドラ。
+             * 音声メディア使用を拒否した場合や、その他エラーが発生した場合に実行される。
+             */
+            let onError = error => {
+                console.log('ERROR : ' + error);
+                alert('ERROR raised. : ' + error);
+            };
+
+            /**
+             * ScriptProcessorにaudioprocessイベントハンドラを設定する。
+             */
+            function setupAudioProcessEventHandler(processor) {
+                processor.onaudioprocess = function(event) {
+                    let channel = event.inputBuffer.getChannelData(0);
+                    let buffer = new Float32Array(_bufSize);
+                    for (let i = 0; i < _bufSize; i++) {
+                        buffer[i] = channel[i];
+                    }
+                    _wholeBuffer.push(buffer);
+                };
+            }
+
+            /**
+             * ScriptProcessorからaudioprocessイベントハンドラを解除する。
+             */
+            function releaseAudioProcessEventHandler(processor) {
+                processor.onaudioprocess = null;
+            }
+
+        </script>
+    </head>
+    <body>
+        <div id="showStatus">&nbsp;</div>
+        <input id="btnStart" type="button" value="開始" />
+        <input id="btnStop" type="button" value="終了" />
+        <input id="btnClear" type="button" value="クリア" />
+        <br/>
+        <input id="btnConnIOS" type="button" value="iOSと接続" />
+        <input id="btnConnServer" type="button" value="サーバと接続" />
+
+    </body>
+</html>

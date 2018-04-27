@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+            .tab {
+                margin-left: 40px;
+            }
+        </style>
+    </head>
+    <body>
+        <a href="tts_ios.html" target="_blank">TTSテスト(iOS)</a><br/>
+        <a href="tts_ope1.html?operatorId=1" target="_blank">TTSテスト(オペ)</a><br/>
+        <a href="tts_ope1.html?operatorId=1&fname=soap&ext=mp3" target="_blank">TTSテスト(オペ) - 音源ファイルパラメータ付</a>
+        <br/>
+        <h3>手順</h3>
+        <div style="margin-left: 10px;">
+            <span>1. iOS画面を開き「接続」する。（スマホなどで表示すればベター）</span><br/>
+            <span>2. オペ画面を開き「接続」する。</span><br/>
+            <span>3. ドライバ音声とTTSの音量は、双方のオーディオコントロールで調整。</span><br/>
+            <span>4. 次に再生するファイルを指定する場合は「次の音源を設定」にファイル名を入力して「設定」する。</span><br/>
+            <span>5. 再生中に保留にしたい場合は「保留」する。</span><br/>
+            <br/>
+            <span>※ iOS画面とオペ画面を同じ端末で開く場合、オペの立場でしか使用できない。iOS画面の音声をブラウザタブでミュートする）</span><br/>
+            <span>※ 1.2.の操作順はどちらが先でも問題ない。</span>
+        </div>
+        <br/>
+        <h3>処理内容</h3>
+        <div style="margin-left: 10px;">
+            <span>1. iOS画面；「接続」</span><br/>
+            <span class="tab">MultiStreamのPublisherとしてSoraに接続する。</span><br/>
+            <span class="tab">&nbsp;（自端末のマイクを入力としたStreamを生成する。）</span><br/>
+            <span class="tab">&nbsp;（Publisherの出力Streamに設定される。）</span><br/>
+            <span class="tab">オペ画面でTTSストリームが接続されると、追加でStreamを生成する。</span><br/>
+            <span class="tab">&nbsp;（TTSストリームはPublisherの出力として流入してくる。）</span><br/>
+            <br/>
+            <span>2. オペ画面；「接続」</span><br/>
+            <span class="tab">ServerのTTS音源ソースとの間にStreamを確立する。</span><br/>
+            <span class="tab">MultiStreamのPublisherとしてSoraに接続し、TTS音源をPublisherへ転送する。</span><br/>
+            <span class="tab">&nbsp;（このStreamは、自端末では再生されない。）</span><br/>
+            <span class="tab">MultiStreamのSubscriberとしてSoraに接続し、チャネルに設定されている全てのStreamを再生する。</span><br/>
+            <span class="tab">&nbsp;（自端末で出力したTTS音源Streamが流入する。）</span><br/>
+            <span class="tab">&nbsp;（iPhone側で接続済みであれば、iPhoneマイクからの音声Streamが流入する。）</span><br/>
+        </div>
+    </body>
+</html>

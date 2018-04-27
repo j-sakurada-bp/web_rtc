@@ -1,0 +1,11 @@
+curl 'https://translate.google.com/translate_tts?ie=UTF-8&q=こんにちは、僕はペッパーです。よろしくお願いします。今日はいい天気ですね。&tl=ja&client=tw-ob' -H 'Referer: http://translate.google.com/' -H 'User-Agent: stagefright/1.2 (Linux;Android 5.0)' > google_tts.mp3
+
+curl 'https://translate.google.com/translate_tts?ie=UTF-8&q=むかしむかし、あるところに、おじいさんとおばあさんが住んでいました。二人は子どもがいなかったので、シロというイヌをとても可愛がっていました。ある日、シロが畑でほえました。ここほれワンワン、ここほれワンワン。おや？　ここをほれと言っているのか。よしよし、ほってやろう。おじいさんがほってみると、ややっ、これはすごい！なんと、地面の中から大判小判がザクザクと出てきたのです。&tl=ja&client=tw-ob' -H 'Referer: http://translate.google.com/' -H 'User-Agent: stagefright/1.2 (Linux;Android 5.0)' > google_tts.mp3
+
+curl 'https://translate.google.com/translate_tts?ie=UTF-8&q=この話を聞いた、となりの欲張りじいさんが、わしも、大判小判を手に入れる。おめえのシロを、わしに貸してくれや。欲張りじいさんは、シロを無理矢理畑に連れて行きました。そして、嫌がるシロがキャンキャンないたところをほってみると、くさいゴミがたくさん出てきました。この役立たずのイヌめ。怒った欲張りじいさんは、なんと、シロを殴り殺してしまったのです。&tl=ja&client=tw-ob' -H 'Referer: http://translate.google.com/' -H 'User-Agent: stagefright/1.2 (Linux;Android 5.0)' > tts2.mp3
+
+curl 'https://translate.google.com/translate_tts?ie=UTF-8&q=シロを殺されたおじいさんとおばあさんは、なくなくシロを畑にうめてやると、ぼうを立ててお墓を作りました。次の日、おじいさんとおばあさんがシロのお墓参りに畑へ行ってみると、シロのお墓の棒が一晩のうちに大木になっていたのです。おじいさんとおばあさんは、その木でうすを作って、おもちをつきました。すると不思議な事に、もちの中から宝物がたくさん出てきました。&tl=ja&client=tw-ob' -H 'Referer: http://translate.google.com/' -H 'User-Agent: stagefright/1.2 (Linux;Android 5.0)' > tts3.mp3
+
+curl 'https://translate.google.com/translate_tts?ie=UTF-8&q=それを聞いた、欲張りじいさんは、わしも、もちをついて宝を手に入れる。おめえの臼を、わしに貸してくれやと、臼を無理矢理借りると、自分の家でもちをついてみました。しかし出てくるのは石ころばかりで、宝物は出てきません。いまいましい臼め！怒った欲ばりじいさんは臼をオノでたたき割ると、焼いて灰にしてしまいました。&tl=ja&client=tw-ob' -H 'Referer: http://translate.google.com/' -H 'User-Agent: stagefright/1.2 (Linux;Android 5.0)' > tts4.mp3
+
+curl 'https://translate.google.com/translate_tts?ie=UTF-8&q=大切な臼を焼かれたおじいさんは、せめて灰だけでもと、臼を焼いた灰をザルに入れて持ち帰ろうとしました。その時、灰が風に飛ばされて、枯れ木にフワリとかかりました。すると、どうでしょう。灰のかかった枯れ木に、満開の花が咲いたのです。おじいさんは、うれしくなって。枯れ木に花を咲かせましょう。パアーッと、言いながら次々に灰をまいて、枯れ木に美しい花を咲かせました。&tl=ja&client=tw-ob' -H 'Referer: http://translate.google.com/' -H 'User-Agent: stagefright/1.2 (Linux;Android 5.0)' > tts5.mp3

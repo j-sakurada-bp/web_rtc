@@ -1,0 +1,29 @@
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <title>multistream test</title>
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="js/sora.js"></script>
+        <script type="text/javascript" src="js2/common.js?v=1"></script>
+        <script type="text/javascript" src="js2/ms2.js?v=1"></script>
+        <script type="text/javascript">
+            $(function() {
+                $('#btnStart').on('click', doStart);
+                $('#btnStop').on('click', doStop);
+            });
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>MultiStreamでAudio</h1>
+            <br/>
+            <div style="float:left;">
+                <h2>AudioMedia1</h2>
+                <button id="btnStart">start</button>
+                <button id="btnStop">stop</button><br/>
+                <audio id="player" controls></audio>
+                <div id="container"></div>
+            </div>
+        </div>
+    </body>
+</html>

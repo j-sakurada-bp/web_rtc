@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <script type="text/javascript" src="js2/jquery-3.3.1.js"></script>
+        <script type="text/javascript" src="https://rawgithub.com/hiddentao/google-tts/master/google-tts.min.js"></script>
+        <script type="text/javascript" src="js2/wa.js"></script>
+
+        <script type="text/javascript">
+
+            $(function() {
+
+                var params = getGETParameters();
+
+                let tts = new GoogleTTS('en');
+                console.log(tts);
+
+                let temp = tts.urls('This is a pen.', 'en')[0];
+                console.log(temp);
+                tts.play("あいうえお", 'ja', function(err) {
+                    console.log(err);
+                });
+                console.log('complete');
+            })
+
+        </script>
+    </head>
+    <body>
+    </body>
+</html>
