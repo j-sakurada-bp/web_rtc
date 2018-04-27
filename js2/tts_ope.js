@@ -1,112 +1,289 @@
-// GETパラメータのキー
-const _KEY_FILENAME_PARAM = 'fname';
-const _KEY_EXTENSION = 'ext';
-// デフォルト値
-const _DEFAULT_CHANNEL = 'tcdt';
-const _DEFAULT_METADATA = 'ope';
-const _DEFAULT_EXTENSION = 'mp3';
-const _DEFAULT_FILENAME = 'h1';
-// ステータス
+// ポーリングログの出力要否
+const _OUTPUT_LOG = false;
+// 再生/保留ステータス
 const _STATUS_NORMAL = 0;
 const _STATUS_PENDING = 1;
-const _ON_INIT = 0;
+const _STATUS_NO_SOURCE = 2;
+// 画面ステータス
+const _ON_NOT_READY = 0;
 const _ON_CONNECTING = 1;
 const _ON_DISCONNECTING = 2;
 const _ON_PENDING = 3;
+const _ON_INVALID = 9;
+// polling間隔
+const _POLLING_INTERVAL_CHANNEL_ID = 1000;
+const _POLLING_INTERVAL_SEARCH_SOURCE = 1000;
+// サーバでchannelIdが削除されてドライバとのチャネルが確立されていない事を示すダミーチャネルID
+const _DISCONNECTED_ID = '__DISCONNECT_FROM_DRIVER__';
 
-// パラメータ系
+// ステータス（通常 / 保留中）
+let _status = _STATUS_NO_SOURCE;
+
+// 関数横断で使用する変数
+let _ope_id = null;
+// チャネルID取得APIで使用する変数
 let _channelId = null;
-let _metadata = null;
-let _filename = null;
-let _extension = null;
+let _new_channelId = null;
+// 音源ファイル名取得APIで使用する変数
+let _source_path = null;
 
-// Sora Publisher
+// 保留音Url
+let _wait_sound_url = null;
+
+// Soraオブジェクト
 let _publisher = null;
-// Sora subscriber
 let _subscriber = null;
 // Audio Mediaオブジェクト
 let _audio = null;
-// 音源ファイル名のバッファ（Queueとして使用）
-let _sourceBuffer = [];
-// ステータス（通常 / 保留中）
-let _status = _STATUS_NORMAL;
 
-
-// ---- 初期化処理系----
+// =================== 初期化処理系 ==================
 
 /**
  * 初期化処理
  */
-$(function() {
-    // 音源ファイル名の解決
-    resolveFilename();
+$(() => {
+    // 画面を使用不可に設定。
+    controlItems(_ON_NOT_READY);
     // イベントハンドラの設定
     setupEventHandler();
-    // 画面を制御する。
-    controlItems(_ON_INIT);
+    // 画面呼出パラメータからオペレータIDを取得する
+    if (getOperatorIdFromParameter() === false) return;
+    // channelIdが設定されるの監視する
+    observeChannelId(); // -> ポーリングを開始
 });
-
-/**
- * ファイル名を解決する。
- */
-const resolveFilename = function() {
-
-    const params = getGetParameters();
-    const fname = params[_KEY_FILENAME_PARAM];
-    const ext = params[_KEY_EXTENSION];
-
-    _filename = fname || _DEFAULT_FILENAME;
-    _extension = ext || _DEFAULT_EXTENSION;
-
-    const name = 'f.e'.replace('f', _filename).replace('e', _extension);
-    $('#txtAudioFileName').val(name);
-};
 
 /**
  * イベントハンドラを設定する。
  */
 const setupEventHandler = function() {
-    $('#btnConnect').on('click', doConnect);
     $('#btnDisconnect').on('click', doDisconnect);
-    $('#btnSetNext').on('click', doSetNextSource);
     $('#btnPending').on('click', doPending);
+    $('#btnWaitSound').on('click', doSetWaitSound);
+};
+
+/**
+ * オペレータIDを取得する。
+ */
+const getOperatorIdFromParameter = function() {
+
+    const param = getGetParameters();
+    _ope_id = param.opeid;
+    if (!_ope_id) {
+        notifyMsg('GETパラメータにopeidを指定して下さい。index2.htmlを使用して下さい。');
+        window.location.href = 'index2.html';
+        return false;
+    }
+
+    return true;
 };
 
 // ---- イベントハンドラ----
 
 /**
- * 「接続」ボタンイベントハンドラ。
+ * 「切断」ボタンイベントハンドラ。
  */
-const doConnect = function() {
+const doDisconnect = function() {
+    // 切断する
+    disconnect();
+    // channelIdが設定されるの監視する
+    observeChannelId(); // -> ポーリングを開始
+};
 
-    // AudioMedia / SoraPublisher 接続用パラメータのセットアップ
-    if (setupConnectionParameter() === false) {
+/**
+ * 「保留」ボタンイベントハンドラ
+ */
+const doPending = function() {
+
+    // 保留音が選択済み？
+    if (!_wait_sound_url) {
+        notifyMsg('保留音を選択して下さい。');
         return;
     }
+    // 保留音を接続
+    if (_audio) {
+        updateAudioSource(_wait_sound_url, true);
+    }
+    // 画面表示を変更
+    _status = _STATUS_PENDING;
+    refreshPlayInfo();
+};
+
+/**
+ * 「保留音選択」ボタンイベントハンドラ
+ */
+const doSetWaitSound = function() {
+    // プルダウン選択値を取得
+    const selectedOption = $('#selectWaitSound option:selected');
+    const selectedId = selectedOption.val();
+    if (selectedId === '') {
+        notifyMsg('保留音を選択してください。');
+        return;
+    }
+    // 保留音URLの取得
+    getWaitSoundPath(parseInt(selectedId, 10));
+
+    $('#waitSound').text('保留音「' + selectedOption.text() + '」選択中。。');
+};
+
+// ==================== チャネルID取得処理 ====================
+
+/**
+ * チャネルIDの登録/更新/削除を監視して、コネクションを制御する。
+ * 画面起動中は、既定インターバルでポーリングし続ける。
+ */
+const observeChannelId = function() {
+    // ポーリングメッセージ
+    if (_OUTPUT_LOG) console.log('WAITING 4 CONNECTING...  ' + formatDate(new Date()));
+
+    // サーバからChannelIdが取得できない場合は、_DISCONNECTED_IDが設定されている。
+    if (_new_channelId === _DISCONNECTED_ID) {
+        _channelId = null;
+        _new_channelId = null;
+        disconnect();
+
+    // サーバからChannelIdが取得され、かつ、現行のChannelIdと異なる場合は、コネクションをリフレッシュ
+    } else if (_new_channelId !== null) {
+        console.log('●新しいチャネルIDが設定されました。：' + _new_channelId);
+        // 新しいチャネルIDの設定
+        _channelId = _new_channelId;
+        _new_channelId = null;
+        // コネクションをリフレッシュ
+        disconnect();
+        connect();
+
+        // 再生音源を検索するポーリングをスタートする
+        searchNextSourceAndWait();
+    }
+
+    // チャネルIDの取得
+    getChannelId();
+    // チャネルID取得ポーリングは継続される...
+    setTimeout(observeChannelId, _POLLING_INTERVAL_CHANNEL_ID);
+};
+
+/**
+ * ChannelIDを取得する。
+ * 非同期でAjax通信を実行する。通信に成功した時は、getChannelIdOnSuccess()がコールバックされる。
+ */
+const getChannelId = function() {
+    // APIパスの生成
+    const path = getApiPath(_SUB_DOMAIN_CHANNEL_ID, _ENV_ID, _API_ID_CHANNEL_ID);
+    // パラメータ生成
+    const param = createCommonPostParameter(path, { operatorId : _ope_id });
+    // サーバ通信の実行
+    ajax(param, getChannelIdOnSuccess);
+};
+
+/**
+ * chanelId取得通信成功時に実行するfunction。
+ * チャネルIDを取得出来た場合、かつ、現在のチャネルIDと異なる場合は、新たなチャネルIDとして保存する。
+ */
+const getChannelIdOnSuccess = (data, textStatus, jqXHR) => {
+
+    const cd = parseInt(data.statusCode, 10);
+    // HTTP Statusが不正な場合
+    if (cd !== 200) {
+        notifyMsg('System Errorが発生しました。（StatusCode ; ' + cd + '）');
+        // 画面を制御する。
+        controlItems(_ON_INVALID);
+        return;
+    }
+
+    // 結果コードを判定
+    const result = JSON.parse(data.body);
+    if (result.resultCode === 0) {
+        // 現在のチャネルIDと異なる場合のみ
+        if (_channelId !== result.channelId) {
+            _new_channelId = result.channelId;
+        }
+    // チャネルIDが取得出来ない（resultCode != 0）かつ現在チャネルに接続中の場合、切断を示すチャネルIDを設定する
+    } else if (_channelId !== null) {
+        _new_channelId = _DISCONNECTED_ID;
+    }
+};
+
+// =================== 保留音取得処理 ===================
+
+/**
+ * 保留音ソースのURLを取得する。
+ * 非同期でAjax通信を実行する。通信に成功した時は、getWaitSoundPathOnSuccess()がコールバックされる。
+ */
+const getWaitSoundPath = function(soundId) {
+    // パラメータ生成
+    const paramData = {
+        operatorId : _ope_id ,
+        soundEffectId : soundId
+    };
+    // APIパスの生成
+    const path = getApiPath(_SUB_DOMAIN_WAIT_SOUND, _ENV_ID, _API_ID_WAIT_SOUND);
+    // パラメータ
+    const param = createCommonPostParameter(path, paramData);
+    // サーバ通信の実行
+    ajax(param, getWaitSoundPathOnSuccess);
+};
+
+/**
+ * 保留音ソースURL取得通信成功時に実行するfunction。
+ */
+const getWaitSoundPathOnSuccess = function(data, textStatus, jqXHR) {
+
+    const cd = parseInt(data.statusCode);
+    // HTTP Statusが不正な場合
+    if (cd !== 200) {
+        notifyMsg('System Errorが発生しました。（StatusCode ; ' + cd + '）');
+        // 画面を制御する。
+        controlItems(_ON_INVALID);
+        return;
+    }
+
+    // 結果コードを判定
+    const result = JSON.parse(data.body);
+    switch (result.resultCode) {
+        // 正常終了時は保留音URLを保持
+        case 0:
+            _wait_sound_url = result.soundEffectUrl;
+            break;
+        case 9:
+            notifyMsg('Mapping Error. ; ' + result.message);
+            break;
+        default:
+            notifyMsg('予期せぬresultCodeが返却されました。 result code ; ' + result.resultCode + ', ' + result.message);
+            break;
+    }
+};
+
+// =================== 接続制御系 ===================
+
+/**
+ * Soraサーバに接続する。
+ * TTS音源を発信するためにSubscriberとして接続し、
+ * かつ、ドライバ/TTSの音声を受信する為にSubscriberとして接続する。
+ */
+const connect = function() {
 
     // 1. TTSを流すmutistreamのPublisherを生成する。
     // AudioMediaを生成して出力先を取得
     const dest = createAudioObject();
     // SoraのPublisherへ接続
     createPublisherAndConnect(dest);
-    // 再生する
-    _audio.play();
 
     // 2. 下りstreamを再生するためのmultistreamのsubscriberを生成する
     const subscriber = createSubscriberWithEventHandler();
     // 接続する。
-    subscriber.connect().catch(error => console.log(error));
+    subscriber.connect()
+              .catch(error => console.log(error));
 
     // 3. 画面表示制御
-    refreshSrcListDisplay();
     controlItems(_ON_CONNECTING);
+
+    console.log('●チャネルに接続しました。：' + _channelId);
 };
 
 /**
- * 「切断」ボタンイベントハンドラ。
+ * 切断処理。
+ * Audioメディアを削除し、SoraのPublisher / Subscriberを切断して削除する。
  */
-const doDisconnect = function() {
-
+const disconnect = function() {
     // AudioMediaをクリア
     if (_audio !== null) {
         _audio.pause();
@@ -123,64 +300,27 @@ const doDisconnect = function() {
         _subscriber = null;
     }
 
-    // 音源ソースバッファ（Queue）をクリア
-    _sourceBuffer = [];
-
     // 画面を制御する。
-    _status = _STATUS_NORMAL;
     $('#containerDown').empty();
-    refreshSrcListDisplay();
+    // ステータス・画面表示を更新
+    _status = _STATUS_NORMAL;
+    refreshPlayInfo();
     controlItems(_ON_DISCONNECTING);
-};
 
-/**
- * 「設定」ボタンイベントハンドラ
- */
-const doSetNextSource = function() {
-    const nextSrc = $('#txtNextSourceName').val();
-    if (!nextSrc) {
-        alert('次の音源を指定して下さい。');
-        return;
-    }
-    // 再生ソース Queueに登録
-    pushQueue(nextSrc);
-    // 画面表示をリフレッシュ
-    refreshSrcListDisplay();
-};
-
-/**
- * 「保留」ボタンイベントハンドラ
- */
-const doPending = function() {
-    // Queueをクリア
-    _sourceBuffer = [];
-    // 保留音を接続
-    if (_audio) {
-        _audio.pause();
-        _audio.src = _MP3_PATH + 'eine.mp3';
-        _audio.play();
-    }
-    // 画面表示を変更
-    _status = _STATUS_PENDING;
-    refreshSrcListDisplay();
-    controlItems(_ON_PENDING);
-    // ポーリングを開始
-    polling();
-};
-
-// ---- 接続制御系 ----
+    console.log('●チャネルから切断しました。');
+}
 
 /**
  * AudioMediaオブジェクトを生成し、その出力先(Destination)を取得する。
  */
 const createAudioObject = function() {
 
-    // (デフォルト)出力先を取得する。
+    // (デフォルトの)出力先を取得する。
     const ctx = getContext();
     const dest = ctx.createMediaStreamDestination();
 
     // サーバ上の音源(MP3ファイル)へのパスを指定して、AudioMediaを生成する
-    _audio = getAudio(_filename, searchNextContentAndPlay);
+    _audio = getAudio(_source_path, searchNextSource); // 第一引数はnullの場合がありその時は音源が指定されない。第二引数は音源が終了した時にコールバックされる関数0
     // AudioMediaから音源を生成し、デフォルト出力先を出力に設定する(connect)。
     const src = ctx.createMediaElementSource(_audio);
     src.connect(dest);
@@ -192,9 +332,10 @@ const createAudioObject = function() {
  * SoraのPublisherを生成してconnectする。
  */
 const createPublisherAndConnect = function(dest) {
-    // SoraのPublisherを取得し、上記音源の出力先を設定(connect)する。
-    // 音声の送出にのみ使用するので、addstreamイベントは設定しない。
-    _publisher = getSoraPublisher(_channelId, _metadata);
+
+    // SoraのPublisherを取得し、引数「音源の出力先」を設定(connect)する。
+    // 音声の送出にのみ使用するので、addstreamイベントは設定しない。（新たなstreamが追加されても表示・再生しない）
+    _publisher = getSoraPublisher(_channelId);
     // 接続する。
     _publisher.connect(dest.stream);
 };
@@ -204,195 +345,156 @@ const createPublisherAndConnect = function(dest) {
  */
 const createSubscriberWithEventHandler = function() {
 
-    _subscriber = getSoraSubscriber(_channelId, _metadata);
+    _subscriber = getSoraSubscriber(_channelId);
     // eventHandlerの設定
     _subscriber.on('addstream', function(event) {
-        console.log(event);
-        // 追加されたストリームからAudioMediaを生成
+
+        // 追加されたストリームからAudioタグを生成
         const newAudio = createAudioStreamElement(event.stream);
-        // <audio>を追加する。
+        // オーディオタグを追加する。
         $('#containerDown').append(newAudio).append('<br/>');
 
-        // FireFoxは"removestream"イベントを発火しないらしいので、ここで設定しておく
+        // removestreamイベントハンドラ (FireFoxは"removestream"イベントを発火しないらしい。ここで設定しておく)
         event.stream.onremovetrack = function(e) {
             $('#' + event.stream.id).remove();
         };
     });
+
     return _subscriber;
 }
 
-// ---- 再生ソースリスト制御系 ----
-
+// =================== 再生音源制御系 ==================
 /**
- * 再生リストに追加する。
+ * 次に再生すべき音源を取得し、再生する。
+ * (ポーリングを開始する前に音源URLをクリアしている)
  */
-const pushQueue = function(src) {
-    _sourceBuffer.push(src);
-};
-
-/**
- * 再生リストの先頭のソースをポップする。
- */
-const popQueue = function() {
-    if (_sourceBuffer.length === 0) {
-        return null;
-    }
-    return _sourceBuffer.shift();
-};
-
-/**
- * 次に再生すべき音源を取得し、再生する。再生音源が存在しない場合は、音源が設定されるまでポーリングする。
- * 音源が終了したタイミングで実行される。
- */
-const searchNextContentAndPlay = function() {
-    $('#playInfo').text('次の音源が指定されるまで待機中...');
-    polling();
-};
-
-/**
- * ポーリングする。
- * AudioMediaが消去されている場合はポーリングを中断する。
- * 再生すべき音源が設定されていた場合はポーリングを中断する。
- */
-const polling = function() {
-    if (isDisconnectAudio()) {
-        return;
-    }
-    if (playNextSource()) {
-        return;
-    }
-    console.log('WAITING...  ' + formatDate(new Date()));
-    setTimeout(polling, _POLLING_INTERVAL);
-};
-
-/**
- * AudioMediaが存在するかを判定する。
- */
-const isDisconnectAudio = function() {
-    return _audio === null;
-};
-
-/**
- * 次の再生ソースを取得し再生する。
- */
-const playNextSource = function() {
-
-    // TODO 現在は画面上から次のファイル名を手作業で設定している。
-    // TODO 本来は次のファイルが存在するかをポーリング中に確認し、次ファイル名を取得する処理が必要。
-    // let nextSrc = getSource(onSuccess, onError);
-
-    let nextSrc = popQueue();
-    // 再生すべきファイルが無い場合
-    if (nextSrc === null) {
-        return false;
-    }
-    // 次に再生するファイルを再生する。
-    _audio.src = _MP3_PATH + nextSrc;
-    _audio.play();
-
-    // statusを通常に戻して、画面表示をリフレッシュ
-    _status = _STATUS_NORMAL;
-    refreshSrcListDisplay();
-    controlItems(_ON_CONNECTING);
-
-    return true;
-};
-
-/**
- * ajax通信に成功した時の処理を記述する。
- */
-const onSuccess = function(data) {
-    // サーバから取得した再生音源ファイルを再生する（または、Queueに入れておく）。
-
-};
-
-/**
- * ajax通信に失敗した時の処理を記述する。
- */
-const onError = function(jqXHR, status) {
-    // タイムアウトの場合は再度接続する。
-
-    // それ以外の場合は異常終了とする。
-
-};
-
-/**
- * 接続用パラメータをセットアップする。
- */
-const setupConnectionParameter = function() {
-    _channelId = $('#txtChannelId').val();
-    _metadata = $('#txtMetadata').val();
-    _filename = $('#txtAudioFileName').val();
-    // 入力チェック
-    return validate();
-};
-
-/**
- * 入力チェック
- */
-const validate = function() {
-    if (!_channelId) {
-        alert('チャネルIdを入力して下さい。');
-        return false;
-    }
-    if (!_filename) {
-        alert('音源ファイル名を入力して下さい。');
-        return false;
-    }
-    return true;
-};
-
-/**
- * 画面の「再生リスト」「再生情報」の表示を更新する。
- */
-const refreshSrcListDisplay = function() {
-    refreshPlayList();
-    refreshPlayInfo();
-};
-
-/**
- *
- */
-const refreshPlayList = function() {
-
-    let playlist = $('#playList');
-    playlist.empty();
-
-    if (isDisconnectAudio()) {
-        return;
-    }
-
-    for (let i = 0; i < _sourceBuffer.length; i++) {
-       playlist.append('<li>' + _sourceBuffer[i] + '</li>');
-    }
-};
-
-/**
- *
- */
-const refreshPlayInfo = function() {
-
-    if (_status === _STATUS_PENDING) {
-        $('#playInfo').text('保留中。。。');
-        return;
-    }
-
-    if (isDisconnectAudio()) {
-        $('#playInfo').text('');
-        return;
-    }
-    const srcName = getCurrentSrcName();
-    $('#playInfo').text('Now, Playing ' + srcName + '...');
-
+const searchNextSource = function() {
+    // 初期化
+    _source_path = null;
+    // ポーリング開始
+    searchNextSourceAndWait();
 }
 
 /**
- *
+ * 次に再生すべき音源を取得し、再生する。再生音源が存在しない場合は、音源が設定されるまでポーリングする。
+ * チャネルIDが更新された時、音源が終了した時、保留音が設定された時の各タイミングで実行される。
+ */
+const searchNextSourceAndWait = function() {
+    // ポーリングメッセージ
+    if (_OUTPUT_LOG) console.log('WAITING 4 FINDING CONTENT...  ' + formatDate(new Date()));
+
+    // サーバから音源パスが取得できた場合は、_new_source_pathに設定されている。音源を生成して再生開始
+    if (_source_path === null) {
+        // ペンディング中は「ペンディング中」メッセージのまま
+        if (_status !== _STATUS_PENDING) {
+            _status = _STATUS_NO_SOURCE;
+            refreshPlayInfo();
+        }
+
+    } else {
+        // Audioメディアが切断されている＝Soraとも接続されていない
+        if (isDisconnectAudio()) {
+            connect();
+        } else {
+            // Audioメディアの音源だけ更新する
+            updateAudioSource(_source_path, false);
+        }
+        // ステータス・画面表示の更新
+        _status = _STATUS_NORMAL;
+        refreshPlayInfo();
+        // ロギング
+        console.log('●新しい音源を取得しました。：' + _source_path);
+        // ポーリング中断
+        return;
+    }
+    // 次の音源パスの取得を試みる
+    getNextSource();
+    // ポーリング継続
+    setTimeout(searchNextSourceAndWait, _POLLING_INTERVAL_SEARCH_SOURCE);
+};
+
+/**
+ * Audioメディアが切断されているかを判定する。
+ */
+const isDisconnectAudio = function() {
+    return _audio === null;
+}
+
+/**
+ * Audioの音源を更新し、再生する。
+ */
+const updateAudioSource = function(path, isloop) {
+
+    isloop = isloop || false;
+    _audio.pause();
+    // 音源が指定されない場合があり、その時は再生しない。
+    if (path) {
+        _audio.src = path;
+        _audio.loop = isloop;
+        _audio.play();
+    }
+}
+
+/**
+ * 音声音源のURLを取得する。
+ * 非同期でAjax通信を実行する。通信に成功した時は、getNextSourceOnSuccess()がコールバックされる。
+ */
+const getNextSource = function() {
+
+    // APIパスの生成
+    const path = getApiPath(_SUB_DOMAIN_OPE_VOICE, _ENV_ID, _API_ID_OPE_VOICE);
+    // パラメータ生成
+    const param = createCommonPostParameter(path, { operatorId : _ope_id });
+    // サーバ通信の実行
+    ajax(param, getNextSourceOnSuccess);
+};
+
+/**
+ * 音声音源URL取得通信成功時に実行するfunction。
+ */
+const getNextSourceOnSuccess = (data, textStatus, jqXHR) => {
+
+    const cd = parseInt(data.statusCode, 10);
+    // HTTP Statusが不正な場合
+    if (cd !== 200) {
+        notifyMsg('System Errorが発生しました。（StatusCode ; ' + cd + '）');
+        // 画面を制御する。
+        controlItems(_ON_INVALID);
+        return;
+    }
+
+    // 結果コードを判定
+    const result = data.body; // サーバからのレスポンスは既にJavaScriptオブジェクトになっており、JSON.parse()の必要はないらしい。
+    // const result = JSON.parse(data.body);
+    if (result.resultCode === 0) {
+        _source_path = (result.voiceUrl === '' ? null : result.voiceUrl);
+    }
+};
+
+// =================== 画面制御系 ===================
+
+/**
+ * 再生状態の表示をリフレッシュする。
+ */
+const refreshPlayInfo = function() {
+
+    let msg = null;
+    if (isDisconnectAudio()) {
+        msg = '';
+    } else if (_status === _STATUS_NO_SOURCE) {
+        msg = '';
+    } else if (_status === _STATUS_PENDING) {
+        msg = '保留中。。。';
+    } else {
+        msg = 'Now, Playing ' + getCurrentSrcName() + '...';
+    }
+    $('#playInfo').text(msg);
+}
+
+/**
+ * 現在再生中の音源ソースのファイル名を取得する。
  */
 const getCurrentSrcName = function() {
-    if (isDisconnectAudio()) {
-        return null;
-    }
     const ary = _audio.src.split('/');
     return ary[ary.length - 1];
 }
@@ -405,31 +507,31 @@ const controlItems = function(target) {
     let disabled = [];
     let attrs = [];
 
-    if (target === _ON_INIT) {
-        disabled = [false, true, true];
-        attrs = ['未接続', 'blue'];
-        // デフォルトチャネル・メタデータの表示
-        $('#txtChannelId').val(_DEFAULT_CHANNEL);
-        $('#txtMetadata').val(_DEFAULT_METADATA);
+    if (target === _ON_NOT_READY) {
+        disabled = [true, true];
+        attrs = ['接続待機中。。', 'green'];
 
     } else if (target === _ON_CONNECTING) {
-        disabled = [true, false, false];
-        attrs = ['接続中。。', 'red'];
+        disabled = [true, false];
+        attrs = ['接続中', 'blue'];
 
     } else if (target === _ON_DISCONNECTING) {
-        disabled = [false, true, true];
-        attrs = ['未接続', 'blue'];
+        disabled = [false, true];
+        attrs = ['接続待機中。。', 'green'];
 
     } else if (target === _ON_PENDING) {
-        disabled = [true, false, true];
-        attrs = ['接続中。。', 'red'];
+        disabled = [true, true];
+        attrs = ['。。保留にしています。。', 'red'];
+
+    } else if (target === _ON_INVALID) {
+        disabled = [true, true];
+        attrs = ['エラーが発生しました。', 'red'];
 
     } else {
         return;
     }
 
     $('#btnConnect').prop('disabled', disabled[0]);
-    $('#btnDisconnect').prop('disabled', disabled[1]);
-    $('#btnPending').prop('disabled', disabled[2]);
+    $('#btnPending').prop('disabled', disabled[1]);
     $('#status').text(attrs[0]).css('color', attrs[1]);
 };

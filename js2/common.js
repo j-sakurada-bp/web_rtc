@@ -1,10 +1,42 @@
 // 定数
-const _URL = 'ws://13.231.213.196:5000/signaling';
-const _MP3_PATH = './resources/audio/'; // 相対パスは、htmlファイルディレクトリがBaseとなるらしい。。
 const _DEBUG = false;
+
+// PATH系
+// 「WebRTCチャネル取得」サブドメイン
+const _SUB_DOMAIN_CHANNEL_ID = 'bp7ahui7yg';
+// 「保留音音源取得URL取得」サブドメイン
+const _SUB_DOMAIN_WAIT_SOUND = '38lhnz89x4';
+// 「オペレータ音声取得」サブドメイン
+const _SUB_DOMAIN_OPE_VOICE = 'rv8jye5w3c';
+// 環境ID
+const _ENV_ID = 'prod';
+// 「WebRTCチャネル取得」API_ID
+const _API_ID_CHANNEL_ID = 'get_webrtc_channel';
+// 「保留音音源取得URL取得」API_ID
+const _API_ID_WAIT_SOUND = 'get_wait_sound_effect';
+// 「オペレータ音声取得」API_ID
+const _API_ID_OPE_VOICE = 'get_operator_voice';
+// APIのURLのフォーマット
+const _API_FORMAT = 'https://SUBDOMAIN.execute-api.ap-northeast-1.amazonaws.com/ENV/APINAME';
+// シグナリングサーバ
+const _SIGNALING_SERVER = 'ws://13.231.213.196:5000/signaling';
+// 音源ソース（仮）相対パス
+const _MP3_PATH = './resources/audio/'; // 相対パスは、htmlファイルディレクトリがBaseとなるらしい。。
+
+// OPTIONS系
+let _IS_USE_CUSTOM_OPTION = false;
 // getUserMediaを取得する際のoptions
 const _DEFAULT_MEDIA_OPTIONS = {
     audio: true,
+    video: false,
+    audioBitRate: 32
+};
+const _CUSTOM_MEDIA_OPTIONS = {
+    audio: {
+        autoGainControl: false,
+        // echoCancellation: false,
+        // noiseSuppression: false
+    },
     video: false,
     audioBitRate: 32
 };
@@ -14,19 +46,46 @@ const _MULTISTREAM_OPTIONS = {
     video: false,
     audioBitRate: 32,
     multistream: true,
+}
+// ajaxでのPOST通信共通パラメータ。この定数を直接使用せずに、createCommonPostParameter()を使用する。
+// urlとdata属性は、外部から設定する。
+const _COMMON_POST_PARAM = {
+    // url:url,
+    type:'POST',
+    contentType:'application/json; charset=utf-8',
+    dataType: "json",
+    // data: JSON.stringify(data),
+    crossDomain: true,
+    scriptCharset: 'utf-8'
 };
-// polling間隔
-const _POLLING_INTERVAL = 50;
-const _LOG_FORMAT = 'YYYY-MM-DD hh:mm:ss.SSS'
+
+// メディア（audio）HTMLタグ
 const _MEDIA_TAG = 'audio';
+// ログフォーマット
+const _LOG_FORMAT = 'YYYY-MM-DD hh:mm:ss.SSS'
+
+// ========================================================
 
 /**
- * REQUEST(GET)パラメータから、マップ(KeyValueオブジェクト)を生成する。
+ * ajaxでPOST通信用のパラメータオブジェクトを取得する。
+ */
+const createCommonPostParameter = function(url, data) {
+    // ORIGINALのDeepCopyを生成する。
+    const param = JSON.parse(JSON.stringify(_COMMON_POST_PARAM));
+
+    param.url = url;
+    param.data = JSON.stringify(data);
+
+    return param;
+};
+
+/**
+ * 自ページがコールされた時のREQUEST(GET)パラメータから、マップ(KeyValueオブジェクト)を生成する。
  */
 function getGetParameters() {
 
     // GETパラメータ
-    let urlParameter = location.search;
+    const urlParameter = location.search;
     if (!urlParameter) {
         return {};
     }
@@ -36,12 +95,21 @@ function getGetParameters() {
     }
     // mapに変換
     params = params.split('&');
-    let paramObj = {};
+    const paramObj = {};
     for (let i = 0; i < params.length; i++) {
-        let keyValue = params[i].split('=');
+        const keyValue = params[i].split('=');
         paramObj[keyValue[0]] = keyValue[1];
     }
     return paramObj;
+};
+
+/**
+ * サーバのAPIを生成して取得する。
+ */
+const getApiPath = function(subdomain, env, apiname) {
+    return _API_FORMAT.replace('SUBDOMAIN', subdomain)
+                      .replace('ENV', env)
+                      .replace('APINAME', apiname);
 };
 
 /**
@@ -55,11 +123,14 @@ const getUserMedia = function(options) {
         || navigator.mediaDevices.mozGetUserMedia;
 
     if (!navigator.mediaDevices.getUserMedia) {
-        alert('UserMediaを取得出来ません。');
-        throw new Error('UserMediaを取得出来ません。');
+        raiseError('UserMediaを取得出来ません。');
     }
 
-    options = options || _DEFAULT_MEDIA_OPTIONS;
+    if (_IS_USE_CUSTOM_OPTION) {
+        options = options || _CUSTOM_MEDIA_OPTIONS;
+    } else {
+        options = options || _DEFAULT_MEDIA_OPTIONS;
+    }
 
     return navigator.mediaDevices.getUserMedia(options);
 };
@@ -85,7 +156,7 @@ const getSoraPublisher = function(channelId, metadata, options) {
 const getSoraSubscriber = function(channelId, metadata, options) {
     // channelId未指定はNG
     if (!channelId) {
-        throw new Error('channelId is required.');
+        raiseError('チャネルIDを指定して下さい。');
     }
     // 残りはデフォルト値を
     metadata = metadata || '';
@@ -98,7 +169,7 @@ const getSoraSubscriber = function(channelId, metadata, options) {
  * SORAのコネクションを取得する。
  */
 const getSoraConnection = function(url, debug) {
-    url = url || _URL;
+    url = url || _SIGNALING_SERVER;
     debug = debug || _DEBUG;
     return Sora.connection(url, debug);
 };
@@ -115,8 +186,11 @@ const getContext = function() {
  * リモートファイルをリソースとして、AudioMediaを生成して取得する。
  * 第二引数には、音声データ再生が終了した時にコールする関数を指定する。
  */
-const getAudio = function(filename, callback) {
-    const audio = new Audio(_MP3_PATH + filename);
+const getAudio = function(path, callback) {
+    const audio = new Audio();
+    if (path) {
+        audio.src = path;
+    }
     if (callback) {
         audio.addEventListener("ended", callback);
     }
@@ -124,29 +198,33 @@ const getAudio = function(filename, callback) {
 };
 
 /**
- * サーバから次に再生する音源ファイル名を取得する。(未調整。サーバAPIが確定次第、修正）
+ * AJAX通信を行う。
+ * 内部では、$.ajax()を実行しているだけ。
  */
-function getSource(funcOnSuccess, funcOnError) {
-
-    const param = {};
-
-    $.ajax({
-        type: 'GET',
-        url: '/audiosource', // not exist
-        data: param,
-        content: 'application/json',
-        dataType: 'json',
-        timeout: 10000,
-    }).done(function(data) {
-        if (funcOnSuccess) {
-            funcOnSuccess(data);
-        }
-    }).fail(function(jqXHR, status) {
-        if (funcOnError) {
-            funcOnError(jqXHR, status);
-        }
-    });
+function ajax(param, funcOnSuccess, funcOnError) {
+    if (!param) {
+        throw new Error('ajax通信parameterを指定して下さい。');
+    }
+    funcOnSuccess = funcOnSuccess || ajaxDefaultFuncOnSuccess;
+    funcOnError = funcOnError || ajaxDefaultFuncOnError;
+    $.ajax(param).done(funcOnSuccess).fail(funcOnError);
 };
+/**
+ * AJAX通信成功時に実行するfunctionのデフォルト実装。
+ * テスト時に使用します。
+ */
+const ajaxDefaultFuncOnSuccess = function(d, s, x) {
+    console.log(JSON.stringify(d));
+    console.log(s);
+    console.log(x);
+};
+/**
+ * AJAX通信失敗時に実行するfunctionのデフォルト実装。
+ * テスト時に使用します。
+ */
+const ajaxDefaultFuncOnError = function(e) {
+    notifyMsg(JSON.stringify(e));
+}
 
 /**
  * Stremを元に<Audio>タグを生成する。
@@ -159,34 +237,18 @@ const createAudioStreamElement = function(stream, autoplay) {
     const audio = document.createElement(_MEDIA_TAG);
     audio.id = stream.id;
     audio.autoplay = autoplay || true;
-    audio.width = '400';
-    audio.height = '40';
+    audio.width = '400'; // 無効力
+    audio.height = '40'; // 無効力
     audio.srcObject = stream;
     audio.controls = true;
     return audio;
 };
-//
-// const createAudioSourceElement = function(source, id, autoplay) {
-//     if (!source) {
-//         throw new Error('パラメータsourceを指定して下さい。');
-//     }
-//     const audio = document.createElement(_MEDIA_TAG);
-//     if (id) {
-//         audio.id = id;
-//     }
-//     audio.autoplay = autoplay || false;
-//     audio.width = '400';
-//     audio.height = '40';
-//     audio.src = source;
-//     audio.controls = true;
-//     return audio;
-// };
 
-// -------------------------------------
+// ========================================
 
 /**
  * 値を保持しているかを判定する。
- * undefinedまたはnullの場合、値を保持していないと判定する。
+ * undefinedまたはnullまたは空文字の場合、値を保持していないと判定する。
  */
 const hasValue = function(target) {
     if (target === undefined) {
@@ -202,6 +264,23 @@ const hasValue = function(target) {
 };
 
 /**
+ * メッセージを通知する。
+ * consoleにログ出力し、alertで表示している。
+ */
+const notifyMsg = function(msg) {
+    console.log(msg);
+    alert(msg);
+};
+
+/**
+ * エラーを発生する。
+ */
+const raiseError = function(msg) {
+    console.log(msg);
+    throw new Error(msg);
+};
+
+/**
  * 日付をフォーマットして返却する。
  */
 const formatDate = function (date) {
@@ -214,16 +293,9 @@ const formatDate = function (date) {
     format = format.replace(/mm/g, ('0' + date.getMinutes()).slice(-2));
     format = format.replace(/ss/g, ('0' + date.getSeconds()).slice(-2));
     if (format.match(/S/g)) {
-        var milliSeconds = ('00' + date.getMilliseconds()).slice(-3);
-        var length = format.match(/S/g).length;
-        for (var i = 0; i < length; i++) format = format.replace(/S/, milliSeconds.substring(i, i + 1));
+        const milliSeconds = ('00' + date.getMilliseconds()).slice(-3);
+        const length = format.match(/S/g).length;
+        for (let i = 0; i < length; i++) format = format.replace(/S/, milliSeconds.substring(i, i + 1));
     }
     return format;
 };
-
-// /**
-//  * document.getElementByIdの簡略化。
-//  */
-// const getElById = function(id) {
-//     return document.getElementById(id);
-// };
