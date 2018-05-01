@@ -58,7 +58,7 @@ const _COMMON_POST_PARAM = {
     crossDomain: true,
     scriptCharset: 'utf-8',
     headers: {
-        'x-api-key': 'JecAga8o3116eWwAVZD5j5AULCIOGCVr5o8gCGzs'
+        'x-api-key': 'TZyScwVfCb7tYEoGmTzKo46CM0FHv87N778QR8Qa'
     }
 };
 
@@ -189,13 +189,10 @@ const getContext = function() {
  * リモートファイルをリソースとして、AudioMediaを生成して取得する。
  * 第二引数には、音声データ再生が終了した時にコールする関数を指定する。
  */
-const getAudio = function(path, valume, callback) {
+const getAudio = function(path, callback) {
     const audio = new Audio();
     if (path) {
         audio.src = path;
-    }
-    if (valume) {
-        audio.valume = valume;
     }
     if (callback) {
         audio.addEventListener("ended", callback);

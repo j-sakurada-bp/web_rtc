@@ -12,11 +12,11 @@ const _ON_PENDING = 3;
 const _ON_INVALID = 9;
 // polling間隔
 const _POLLING_INTERVAL_CHANNEL_ID = 1000;
-const _POLLING_INTERVAL_SEARCH_SOURCE = 1000;
+const _POLLING_INTERVAL_SEARCH_SOURCE = 500;
 // サーバでchannelIdが削除されてドライバとのチャネルが確立されていない事を示すダミーチャネルID
 const _DISCONNECTED_ID = '__DISCONNECT_FROM_DRIVER__';
 //
-const _DEFAULT_VOLUME = 0.2
+const _TTS_VOLUME_RATE = 0.2
 
 // ステータス（通常 / 保留中）
 let _status = _STATUS_NO_SOURCE;
@@ -37,6 +37,7 @@ let _publisher = null;
 let _subscriber = null;
 // Audio Mediaオブジェクト
 let _audio = null;
+let _gainNode = null;
 
 // =================== 初期化処理系 ==================
 
@@ -51,7 +52,7 @@ $(() => {
     // 画面呼出パラメータからオペレータIDを取得する
     if (getOperatorIdFromParameter() === false) return;
     // channelIdが設定されるの監視する
-    // observeChannelId(); // -> ポーリングを開始
+    observeChannelId(); // -> ポーリングを開始
 });
 
 /**
@@ -61,6 +62,8 @@ const setupEventHandler = function() {
     $('#btnDisconnect').on('click', doDisconnect);
     $('#btnPending').on('click', doPending);
     $('#btnWaitSound').on('click', doSetWaitSound);
+    $('#btnPendingOff').on('click', doPendingOff);
+    $('#btnVolumeSet').on('click', doSetVolumeRate);
 };
 
 /**
@@ -69,9 +72,9 @@ const setupEventHandler = function() {
 const getOperatorIdFromParameter = function() {
 
     const param = getGetParameters();
-    _ope_id = param.opeid;
+    _ope_id = param.operator_id;
     if (!_ope_id) {
-        notifyMsg('GETパラメータにopeidを指定して下さい。index2.htmlを使用して下さい。');
+        notifyMsg('GETパラメータにoperator_idを指定して下さい。index2.htmlを使用して下さい。');
         window.location.href = 'index2.html';
         return false;
     }
@@ -108,6 +111,35 @@ const doPending = function() {
     // 画面表示を変更
     _status = _STATUS_PENDING;
     refreshPlayInfo();
+};
+
+/**
+ * 「保留解除」ボタンイベントハンドラ
+ */
+const doPendingOff = function() {
+
+    // 保留音を接続
+    if (_audio) {
+        updateAudioSource(null, false);
+    }
+    // 画面表示を変更
+    _status = _STATUS_NORMAL;
+    refreshPlayInfo();
+};
+
+/**
+ * 「TTS音量バランス設定」ボタンイベントハンドラ
+ */
+const doSetVolumeRate = function() {
+    const val = $('#txtVolume').val();
+    if (!val || isNaN(val)) {
+        alert('0から100までの数値を入力してください。');
+        return;
+    }
+    if (val < 0 ||  val > 100) {
+        alert('0から100までの数値を入力してください。');
+    }
+    _gainNode.gain.value = parseFloat(val) / 100;
 };
 
 /**
@@ -322,20 +354,15 @@ const createAudioObject = function() {
     const dest = ctx.createMediaStreamDestination();
 
     // サーバ上の音源(MP3ファイル)へのパスを指定して、AudioMediaを生成する
-    _audio = getAudio(_source_path, _DEFAULT_VOLUME, searchNextSource);
-            // 第一引数はnullの場合がありその時は音源が指定されない。
-            // 第二引数はデフォルトのボリューム。
-            // 第三引数は音源が終了した時にコールバックされる関数。
+    _audio = getAudio(_source_path, searchNextSource); // 第一引数はnullの場合がありその時は音源が指定されない。第二引数は音源が終了した時にコールバックされる関数0
     // AudioMediaから音源を生成し、デフォルト出力先を出力に設定する(connect)。
     const src = ctx.createMediaElementSource(_audio);
 
-
-    // src.connect(dest);
-    const gainNode = ctx.createGain();
-    src.connect(gainNode);
-    gainNode.connect(dest);
-    gainNode.gain.value = 0.2;
-    
+    // ボリューム調整用のノードを追加
+    _gainNode = ctx.createGain();
+    src.connect(_gainNode);
+    _gainNode.connect(dest);
+    _gainNode.gain.value = _TTS_VOLUME_RATE;
 
     return dest;
 };
@@ -480,6 +507,7 @@ const getNextSourceOnSuccess = (data, textStatus, jqXHR) => {
     // const result = JSON.parse(data.body);
     if (result.resultCode === 0) {
         _source_path = (result.voiceUrl === '' ? null : result.voiceUrl);
+        _source_path = null;
     }
 };
 
