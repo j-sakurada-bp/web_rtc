@@ -51,6 +51,8 @@ $(() => {
     setupEventHandler();
     // 画面呼出パラメータからオペレータIDを取得する
     if (getOperatorIdFromParameter() === false) return;
+    // 2018.05.07 保留音は「保留音４」で固定
+    doSetWaitSound();
     // channelIdが設定されるの監視する
     observeChannelId(); // -> ポーリングを開始
 });
