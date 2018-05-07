@@ -15,8 +15,6 @@ const _POLLING_INTERVAL_CHANNEL_ID = 1000;
 const _POLLING_INTERVAL_SEARCH_SOURCE = 1000;
 // サーバでchannelIdが削除されてドライバとのチャネルが確立されていない事を示すダミーチャネルID
 const _DISCONNECTED_ID = '__DISCONNECT_FROM_DRIVER__';
-//
-const _DEFAULT_VOLUME = 0.2
 
 // ステータス（通常 / 保留中）
 let _status = _STATUS_NO_SOURCE;
@@ -51,7 +49,7 @@ $(() => {
     // 画面呼出パラメータからオペレータIDを取得する
     if (getOperatorIdFromParameter() === false) return;
     // channelIdが設定されるの監視する
-    // observeChannelId(); // -> ポーリングを開始
+    observeChannelId(); // -> ポーリングを開始
 });
 
 /**
@@ -322,20 +320,10 @@ const createAudioObject = function() {
     const dest = ctx.createMediaStreamDestination();
 
     // サーバ上の音源(MP3ファイル)へのパスを指定して、AudioMediaを生成する
-    _audio = getAudio(_source_path, _DEFAULT_VOLUME, searchNextSource);
-            // 第一引数はnullの場合がありその時は音源が指定されない。
-            // 第二引数はデフォルトのボリューム。
-            // 第三引数は音源が終了した時にコールバックされる関数。
+    _audio = getAudio(_source_path, searchNextSource); // 第一引数はnullの場合がありその時は音源が指定されない。第二引数は音源が終了した時にコールバックされる関数0
     // AudioMediaから音源を生成し、デフォルト出力先を出力に設定する(connect)。
     const src = ctx.createMediaElementSource(_audio);
-
-
-    // src.connect(dest);
-    const gainNode = ctx.createGain();
-    src.connect(gainNode);
-    gainNode.connect(dest);
-    gainNode.gain.value = 0.2;
-    
+    src.connect(dest);
 
     return dest;
 };
