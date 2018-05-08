@@ -74,8 +74,8 @@ const getOperatorIdFromParameter = function() {
     const param = getGetParameters();
     _ope_id = param.operator_id;
     if (!_ope_id) {
-        notifyMsg('GETパラメータにoperator_idを指定して下さい。index2.htmlを使用して下さい。');
-        window.location.href = 'index2.html';
+        notifyMsg('GETパラメータにoperator_idを指定して下さい。');
+        // window.location.href = 'index2.html';
         return false;
     }
 
