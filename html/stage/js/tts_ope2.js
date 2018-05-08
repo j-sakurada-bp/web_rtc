@@ -52,7 +52,7 @@ $(() => {
     // 画面呼出パラメータからオペレータIDを取得する
     if (getOperatorIdFromParameter() === false) return;
     // 2018.05.07 保留音は「保留音４」で固定
-    doSetWaitSound();
+    getWaitSoundPath(4);
     // channelIdが設定されるの監視する
     observeChannelId(); // -> ポーリングを開始
 });
@@ -63,9 +63,7 @@ $(() => {
 const setupEventHandler = function() {
     $('#btnDisconnect').on('click', doDisconnect);
     $('#btnPending').on('click', doPending);
-    $('#btnWaitSound').on('click', doSetWaitSound);
     $('#btnPendingOff').on('click', doPendingOff);
-    $('#btnVolumeSet').on('click', doSetVolumeRate);
 };
 
 /**
@@ -127,38 +125,6 @@ const doPendingOff = function() {
     // 画面表示を変更
     _status = _STATUS_NORMAL;
     refreshPlayInfo();
-};
-
-/**
- * 「TTS音量バランス設定」ボタンイベントハンドラ
- */
-const doSetVolumeRate = function() {
-    const val = $('#txtVolume').val();
-    if (!val || isNaN(val)) {
-        alert('0から100までの数値を入力してください。');
-        return;
-    }
-    if (val < 0 ||  val > 100) {
-        alert('0から100までの数値を入力してください。');
-    }
-    _gainNode.gain.value = parseFloat(val) / 100;
-};
-
-/**
- * 「保留音選択」ボタンイベントハンドラ
- */
-const doSetWaitSound = function() {
-    // プルダウン選択値を取得
-    const selectedOption = $('#selectWaitSound option:selected');
-    const selectedId = selectedOption.val();
-    if (selectedId === '') {
-        notifyMsg('保留音を選択してください。');
-        return;
-    }
-    // 保留音URLの取得
-    getWaitSoundPath(parseInt(selectedId, 10));
-
-    $('#waitSound').text('保留音「' + selectedOption.text() + '」選択中。。');
 };
 
 // ==================== チャネルID取得処理 ====================

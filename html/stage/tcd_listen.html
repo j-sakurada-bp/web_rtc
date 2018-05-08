@@ -10,41 +10,24 @@
     </head>
     <body>
         <div class="lblDeviceType">オペレータ側</div>
-        <h3 style="color: red; font-weight: bold;">音声が終了すると内部でポーリング処理を開始します。リソースを消費しますので切断して下さい。</h3>
         <div id="mainArea">
             <div id="leftArea">
-                <div id="status"></div>
                 <div id="playInfo"></div>
-                <input id="btnDisconnect" type="button" value="切断" />
-                <input id="btnPending" type="button" value="保留" />
-                <input id="btnPendingOff" type="button" value="保留解除" />
-                <br/>
-                <div id="volArea">
-                    <span id="lblVol">TTS音量：</span>
-                    <input type="text" id="txtVolume" value="20" /><span id="lblMax">/100</span>
-                    <input id="btnVolumeSet" type="button" value="設定" />
-                </div>
-                <div style="margin-left: 10px; font-style: italic; color: #aaa;">上記は「本来のTTSの音量の何パーセントを出力するか」という意味です。
+                <div id="buttonArea">
+                    <input id="btnPending" type="button" value="保留" />
+                    <input id="btnPendingOff" type="button" value="保留解除" />
                 </div>
             </div>
             <div id="rightArea">
                 <div class="lblAudio">「iPhone => オペレータ」ストリーム</div><div id="containerDown" class="container"></div>
             </div>
         </div>
-        <hr/>
+        <hr class="line"/>
         <div>
-            <h3>保留音設定</h3>
-            <div id="waitSound">保留音「保留音４」固定。</div>
-            <select id="selectWaitSound" disabled>
-                <option value="">ー</option>
-                <option value="1">保留音１</option>
-                <option value="2">保留音２</option>
-                <option value="3">保留音３</option>
-                <option value="4" selected>保留音４</option>
-                <option value="5">保留音５</option>
-                <option value="6">保留音６</option>
-            </select>
-            <input id="btnWaitSound" type="button" value="保留音選択" disabled/>
+            <div id="status"></div>
+            <div id="buttonArea">
+                <input id="btnDisconnect" type="button" value="切断" />
+            </div>
         </div>
     </body>
 </html>

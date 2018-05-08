@@ -1,8 +1,9 @@
 #mainArea {
-    height: 200px;
+    height: 140px;
 }
 #leftArea {
     float: left;
+    width: 450px;
 }
 #rightArea {
     border: 1px solid #fcc;
@@ -10,6 +11,9 @@
     float: left;
     margin-top: 10px;
     margin-left: 30px;
+}
+#buttonArea {
+    margin-left: 10px;
 }
 .lblDeviceType {
     margin: 10px;
@@ -23,41 +27,25 @@ div {
     margin: 0px;
     padding: 0px;
 }
-#status {
-    width: 300px;
-    height: 25px;
-    margin: 10px;
-    text-align: center;
-    border: 3px solid #ddd
-}
 #playInfo {
     width: 300px;
     height: 25px;
-    margin: 10px;
+    margin: 20px 10px 20px 10px;
     text-align: center;
     border: 3px solid #faa;
 }
-#waitSound {
+#status {
     width: 300px;
     height: 25px;
-    margin: 10px;
+    margin: 30px 10px 20px 10px;
     text-align: center;
-    border: 3px solid #aaf;
+    border: 3px solid #ddd
 }
 input[type=text] {
     width: 200px;
     height: 20px;
     margin-bottom: 5px;
     font-size: 16px;
-}
-.lblTitle {
-    display: inline-block;
-    width: 100px;
-    height: 20px;
-    font-size: 14px;
-    margin-bottom: 5px;
-    padding-right: 7px;
-    text-align: right;
 }
 input[type=button] {
     width: 100px;
@@ -81,23 +69,8 @@ option {
 p {
     margin-left: 20px;
 }
-hr {
+hr.line {
+    clear: both;
     margin-top: 20px;
     margin-bottom: 20px;
-}
-
-#volArea {
-    margin-top: 10px;
-}
-#lblVol {
-    margin-left: 10px;
-    margin-right: 10px;
-}
-#txtVolume {
-    width: 50px;
-    text-align: right;
-}
-#lblMax {
-    margin-left: 10px;
-    margin-right: 20px;
 }
